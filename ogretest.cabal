@@ -1,0 +1,28 @@
+Name:           ogretest
+Version:        0.0.1
+Cabal-Version:  >= 1.2
+License:        OtherLicense
+License-File:   LICENSE
+Author:         Antti Salonen<ajsalonen at gmail dot com>
+Copyright:      Antti Salonen 2009
+Stability:      Unstable
+Category:       Games
+Synopsis:       A test
+Build-type:     Simple
+
+Executable ogretest
+  Build-Depends:   base, haskell98, hogre>=0.0.1
+  Main-is:         Main.hs
+  Hs-Source-Dirs:  src
+  Ghc-options:     -Wall -O2
+  extra-lib-dirs:  /usr/local/lib
+  extra-libraries: CEGUIOgreRenderer, OgreMain, CEGUIBase
+
+Executable ogregame
+  Build-Depends:   base, haskell98, hogre>=0.0.1, SDL>=0.4.0
+  Main-is:         OgreGame.hs
+  Hs-Source-Dirs:  src
+  Ghc-options:     -Wall -O2
+  extra-lib-dirs:  /usr/local/lib
+  extra-libraries: CEGUIOgreRenderer, OgreMain, CEGUIBase
+
