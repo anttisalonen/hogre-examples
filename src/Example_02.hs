@@ -2,37 +2,21 @@
 module Main
 where
 
-import Data.Either
+import Data.Maybe
 import System.IO
-import Control.Monad (when)
+import Control.Concurrent
+import Control.Monad (when, forever)
 
 import qualified Graphics.UI.SDL as SDL
 
 import Graphics.Ogre.Ogre
-import Game
 
-data ExampleGame = ExampleGame { val :: Float }
-    deriving (Eq, Show, Read)
-
-data ExampleGameAction = Up
-                       | Down
-    deriving (Eq, Show, Read)
-
-instance Game ExampleGame ExampleGameAction String where
-    init _ = initGame
-    cleanup = shutdown 
-    render game = setEntityPosition "obj1" (Vector3 20 (val game) 20) >> renderOgre
-    renew game = ExampleGame (val game + 0.1)
-    process _ = []
-    update game _ = game
-    input _ = do
-      events <- pollAllSDLEvents
-      when (not (null events)) (print events)
-      let evts = map handleEvent events
-      -- when (not (null evts)) (print evts)
-      if (not . null . lefts) evts 
-        then return (Left (head (lefts (evts))))
-        else return (Right (concat (rights evts)))
+input :: Action -> IO (Maybe Action)
+input ac = do
+  events <- pollAllSDLEvents
+  when (not (null events)) (print events)
+  let nac@(_, ro, t, q) = foldl eventToAction ac events
+  if q then return Nothing else doAction ro t >> return (Just nac)
 
 pollAllSDLEvents :: IO [SDL.Event]
 pollAllSDLEvents = go []
@@ -44,15 +28,47 @@ pollAllSDLEvents = go []
                        es <- pollAllSDLEvents
                        return (e:es)
 
-handleEvent :: SDL.Event -> Either String [ExampleGameAction]
-handleEvent SDL.Quit                                  = Left "Quit"
-handleEvent (SDL.KeyDown (SDL.Keysym SDL.SDLK_q _ _)) = Left "q"
-handleEvent _                                         = Right [Up]
+type Action = (Bool, (Float, Float), (Float, Float, Float), Bool)
+
+eventToAction :: Action -> SDL.Event -> Action
+eventToAction (bt, ro, t, _) SDL.Quit = (bt, ro, t, True)
+eventToAction (bt, ro, t, _) (SDL.KeyDown (SDL.Keysym SDL.SDLK_ESCAPE _ _)) = (bt, ro, t, True)
+eventToAction (bt, ro, t, _) (SDL.KeyDown (SDL.Keysym SDL.SDLK_q      _ _)) = (bt, ro, t, True)
+eventToAction (bt, ro, t@(x_, y_, z_), q) (SDL.KeyDown (SDL.Keysym k _ _)) = case k of
+  SDL.SDLK_UP       -> (bt, ro, (x_, y_, z_ - 1.0), q)
+  SDL.SDLK_DOWN     -> (bt, ro, (x_, y_, z_ + 1.0), q)
+  SDL.SDLK_RIGHT    -> (bt, ro, (x_ + 1.0, y_, z_), q)
+  SDL.SDLK_LEFT     -> (bt, ro, (x_ - 1.0, y_, z_), q)
+  SDL.SDLK_PAGEDOWN -> (bt, ro, (x_, y_ - 1.0, z_), q)
+  SDL.SDLK_PAGEUP   -> (bt, ro, (x_, y_ + 1.0, z_), q)
+  _ -> (bt, ro, t, q)
+eventToAction (bt, ro, t@(x_, y_, z_), q) (SDL.KeyUp   (SDL.Keysym k _ _)) = case k of
+  SDL.SDLK_UP        -> (bt, ro, (x_, y_, z_ + 1.0), q)
+  SDL.SDLK_DOWN      -> (bt, ro, (x_, y_, z_ - 1.0), q)
+  SDL.SDLK_RIGHT     -> (bt, ro, (x_ - 1.0, y_, z_), q)
+  SDL.SDLK_LEFT      -> (bt, ro, (x_ + 1.0, y_, z_), q)
+  SDL.SDLK_PAGEDOWN  -> (bt, ro, (x_, y_ + 1.0, z_), q)
+  SDL.SDLK_PAGEUP    -> (bt, ro, (x_, y_ - 1.0, z_), q)
+  _ -> (bt, ro, t, q)
+eventToAction (False, ro, t, q)        (SDL.MouseMotion _ _ _ _) = (False, ro, t, q)
+eventToAction (True, (ya, pit), t, q) (SDL.MouseMotion _ _ abs_x abs_y) = (True, (ya - (0.005 * fromIntegral abs_x), pit - (0.005 * fromIntegral abs_y)), t, q)
+eventToAction (_,  ro, t, q) (SDL.MouseButtonUp   _ _ SDL.ButtonRight) = (False, ro, t, q)
+eventToAction (_,  ro, t, q) (SDL.MouseButtonDown _ _ SDL.ButtonRight) = (True, ro, t, q)
+eventToAction (bt, ro, t, q) _ = (bt, ro, t, q)
+
+resetRotation :: Action -> Action
+resetRotation (bt, _, t, q) = (bt, (0, 0), t, q)
+
+doAction :: (Float, Float) -> (Float, Float, Float) -> IO ()
+doAction (ya, pit) (x_, y_, z_) = do
+  rotateCamera (YPR ya 0 0)  World
+  rotateCamera (YPR 0 pit 0) Local
+  translateCamera (Vector3 x_ y_ z_)
 
 initGame :: IO ()
 initGame = do
-    let set = OgreSettings "resources.cfg" False "Ogre/Haskell Test" (Color 0.2 0.2 0.2) TextureModulative
-    let cam = Camera (Vector3 35.0 0.0 50.0) halfPI (Vector3 35.0 100.0 50.0)
+    let set = OgreSettings "resources.cfg" False "Hogre Example 02" (Color 0.2 0.2 0.2) StencilModulative
+    let cam = Camera (Vector3 100.0 10.0 40) 0 (Vector3 101 10 40)
     let lightdiffuse = Color 0.9 0.9 0.9
     let lightspecular = Color 0.8 0.8 0.8
     let spotrange = (0.0, degToRad 80.0)
@@ -60,29 +76,45 @@ initGame = do
     let l2 = Light "light2" lightdiffuse lightspecular (SpotLight (Vector3 70 15.0 0) (Vector3 (-1.0) (-1.0)   1.0) spotrange)
     let l3 = Light "light3" lightdiffuse lightspecular (SpotLight (Vector3  0 15.0 100) (Vector3   1.0  (-1.0) (-1.0)) spotrange)
     let l4 = Light "light4" lightdiffuse lightspecular (SpotLight (Vector3 70 15.0 100) (Vector3 (-1.0) (-1.0) (-1.0)) spotrange)
-    let plane = Plane unitY 0.0 70.0 100.0 20 20 5.0 5.0 unitZ "Examples/GrassFloor"
+    let plane = Plane unitY 0.0 70.0 100.0 20 20 5.0 5.0 unitZ "HelicopterBody"
     let pl = Entity "ground" (Vector3 35.0 0.0 50.0) plane False (Vector3 1.0 1.0 1.0)
-    let goalmesh = "Goal.mesh"
-    let goalscale = Vector3 3.66 2.44 1.0
-    let goal1 = Entity "goal1" (Vector3 35.0 1.0 (-4.2)) (StdMesh goalmesh (YPR  halfPI  0.0 0.0)) True goalscale
-    let goal2 = Entity "goal2" (Vector3 35.0 1.0 104.5)  (StdMesh goalmesh (YPR (-halfPI) 0.0 pi)) True goalscale
+    let swordmesh = "sword.mesh"
+    let swordscale = Vector3 1.66 1.44 1.0
+    let sword1 = Entity "sword1" (Vector3 35.0 3.0 4.2) (StdMesh swordmesh (YPR  halfPI  0.0 0.0)) True swordscale
+    let sword2 = Entity "sword2" (Vector3 35.0 3.0 84.5)  (StdMesh swordmesh (YPR  halfPI  0.0 0.0)) True swordscale
     let lig = [l1, l2, l3, l4]
-    let ents = [pl, goal1, goal2]
+    let ents = [pl, sword1, sword2]
     let sce = OgreScene cam ents lig
     let (wid, hei) = (1024, 768)
-    _ <- SDL.setVideoMode wid hei 32 [SDL.OpenGL, SDL.HWAccel]
-    mapM_ putStrLn (replicate 10 "")
+    _ <- SDL.setVideoMode wid hei 16 [SDL.OpenGL, SDL.HWAccel]
     SDL.wasInit [SDL.InitEverything] >>= print
     initOgre set
     addScene sce
-    addEntity (Entity "obj1" (Vector3 5.0 20.0 10.0) (StdMesh "robot.mesh" (YPR 0.0 0.0 0.0)) True (Vector3 0.1 0.1 0.1))
+    addEntity (Entity "obj1" (Vector3 5.0 20.0 10.0) (StdMesh "hornet.mesh" (YPR 0.0 0.0 0.0)) True (Vector3 0.6 0.6 0.6))
 
-shutdown :: ExampleGame -> IO ()
-shutdown game = do
-    print game
+shutdown :: IO ()
+shutdown = do
     putStrLn "Shutting down..."
     cleanupOgre
 
 main :: IO ()
-main = SDL.withInit [SDL.InitEverything] $ runThreadedNonblocking (ExampleGame 0) 20 20 >> return ()
+main = SDL.withInit [SDL.InitEverything] $ runThreadedNonblocking 20 20 >> return ()
+
+runThreadedNonblocking :: Int -> Int -> IO ()
+runThreadedNonblocking renderinterval handleinterval = do
+   initGame
+   let ri = renderinterval * 1000
+   let si = handleinterval * 1000
+   rtid <- forkIO (forever (renderOgre >> threadDelay ri))
+   loopThreaded si [rtid] (False, (0, 0), (0, 0, 0), False)
+
+fullCleanup :: [ThreadId] -> IO () -> IO ()
+fullCleanup tids cf = mapM_ killThread tids >> cf
+
+loopThreaded :: Int -> [ThreadId] -> Action -> IO ()
+loopThreaded si tids ac = do
+  i <- input ac
+  case i of
+    Nothing  -> fullCleanup tids shutdown
+    Just nac -> threadDelay si >> loopThreaded si tids (resetRotation nac)
 
