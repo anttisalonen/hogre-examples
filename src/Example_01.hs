@@ -13,7 +13,7 @@ renderLoop f = do
     renderLoop (f + 0.008)
 
 ogreloc :: Float -> Vector3
-ogreloc f = Vector3 (30 + 30 * sin f) (5 + 2 * sin (0.2 * f)) (50 + 30 * cos f)
+ogreloc f = Vector3 (30 + 30 * sin f) (2 + 2 * sin (0.2 * f)) (50 + 30 * cos f)
 
 main :: IO ()
 main = do
@@ -24,14 +24,14 @@ main = do
     let spotrange = (0.0, degToRad 80.0)
     let l1 = SpotLight "light1" (Vector3 0 15.0 0)    lightdiffuse lightspecular (Vector3   1.0  (-1.0)   1.0)  spotrange
     let l2 = SpotLight "light2" (Vector3 70 15.0 0)   lightdiffuse lightspecular (Vector3 (-1.0) (-1.0)   1.0)  spotrange
-    let plane = Plane unitY 0.0 70.0 100.0 20 20 5.0 5.0 unitZ "Examples/Rocky"
+    let plane = Plane unitY 0.0 70.0 100.0 20 20 5.0 5.0 unitZ "HelicopterBody"
     let pl = Entity "ground" (Vector3 35.0 0.0 50.0) plane False (Vector3 1.0 1.0 1.0)
     let lig = [l1, l2]
     let ents = [pl]
     let sce = OgreScene cam ents lig
     initOgre set
     addScene sce
-    addEntity (Entity "obj1" (ogreloc 0) (StdMesh "ogrehead.mesh" (YPR pi 0 0)) True (Vector3 0.1 0.1 0.1))
+    addEntity (Entity "obj1" (ogreloc 0) (StdMesh "sword.mesh" (YPR (halfPI) (pi/5) (pi/6))) True (Vector3 1.5 1.5 1.5))
     handle shutdown (renderLoop 0)
 
 shutdown :: (Show a) => a -> IO ()
