@@ -21,16 +21,16 @@ material HelicopterBody
 	{
 		pass
 		{
-			ambient 0.300000 0.300000 0.000000 1.000000
-			diffuse 0.786168 0.795673 0.786204 1.000000
-			specular 0.630000 0.630000 0.630000 1.000000 12.500000
-			emissive 0.000000 0.000000 0.000000 1.000000
+			// ambient 0.300000 0.300000 0.000000 1.000000
+			// diffuse 0.786168 0.795673 0.786204 1.000000
+			// specular 0.630000 0.630000 0.630000 1.000000 12.500000
+			// emissive 0.000000 0.000000 0.000000 1.000000
 			texture_unit
 			{
 				texture lava.tga
-				tex_address_mode wrap
-				filtering trilinear
-				colour_op alpha_blend
+				// tex_address_mode wrap
+				// filtering trilinear
+				// colour_op alpha_blend
 			}
 		}
 	}
