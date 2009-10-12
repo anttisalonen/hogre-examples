@@ -4,6 +4,7 @@ where
 
 import Data.Maybe
 import System.IO
+import Control.Monad (when)
 
 import qualified Graphics.UI.SDL as SDL
 
@@ -24,5 +25,13 @@ initGame = do
     setWorldGeometry "terrain.cfg"
 
 main :: IO ()
-main = runWithSDL initGame
+main = runWithSDL initGame query
+
+query :: IO ()
+query = do
+  (Vector3 camx camy camz) <- getCameraPosition
+  mres <- raySceneQuerySimple (Vector3 camx 5000 camz) negUnitY
+  case mres of
+    Nothing -> return ()
+    Just res -> when ((y res) + 10 > camy) $ setCameraPosition (Vector3 camx ((y res) + 10) camz)
 

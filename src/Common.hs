@@ -1,4 +1,4 @@
-module Common
+module Common(runWithSDL)
 where
 
 import Control.Monad (when, forever)
@@ -19,12 +19,12 @@ pollAllSDLEvents = go []
                        es <- pollAllSDLEvents
                        return (e:es)
 
-input :: Action -> IO (Maybe Action)
-input ac = do
+input :: Action -> IO () -> IO (Maybe Action)
+input ac action = do
   events <- pollAllSDLEvents
   when (not (null events)) (print events >> (getCameraPosition >>= print))
   let nac@(_, ro, t, q) = foldl eventToAction ac events
-  if q then return Nothing else doAction ro t >> return (Just nac)
+  if q then return Nothing else doAction ro t action >> return (Just nac)
 
 type Action = (Bool,        -- right mouse button pressed
     (Float, Float),         -- rotation (yaw, pitch)
@@ -60,40 +60,36 @@ eventToAction (bt, ro, t, q) _ = (bt, ro, t, q)
 resetRotation :: Action -> Action
 resetRotation (bt, _, t, q) = (bt, (0, 0), t, q)
 
-doAction :: (Float, Float) -> (Float, Float, Float) -> IO ()
-doAction (ya, pit) (x_, y_, z_) = do
+doAction :: (Float, Float) -> (Float, Float, Float) -> IO () -> IO ()
+doAction (ya, pit) (x_, y_, z_) act = do
   rotateCamera (YPR ya 0 0)  World
   rotateCamera (YPR 0 pit 0) Local
   translateCamera (Vector3 x_ y_ z_)
-  (Vector3 camx camy camz) <- getCameraPosition
-  mres <- raySceneQuerySimple (Vector3 camx 5000 camz) negUnitY
-  case mres of
-    Nothing -> return ()
-    Just res -> when ((y res) + 10 > camy) $ setCameraPosition (Vector3 camx ((y res) + 10) camz)
+  act
 
 shutdown :: IO ()
 shutdown = do
     putStrLn "Shutting down..."
     cleanupOgre
 
-runWithSDL :: IO () -> IO ()
-runWithSDL initGame = SDL.withInit [SDL.InitEverything] $ runThreadedNonblocking initGame 20 20 >> return ()
+runWithSDL :: IO () -> IO () -> IO ()
+runWithSDL initGame action = SDL.withInit [SDL.InitEverything] $ runThreadedNonblocking initGame action 20 20 >> return ()
 
-runThreadedNonblocking :: IO () -> Int -> Int -> IO ()
-runThreadedNonblocking initGame renderinterval handleinterval = do
+runThreadedNonblocking :: IO () -> IO () -> Int -> Int -> IO ()
+runThreadedNonblocking initGame action renderinterval handleinterval = do
    initGame
    let ri = renderinterval * 1000
    let si = handleinterval * 1000
    rtid <- forkIO (forever (renderOgre >> threadDelay ri))
-   loopThreaded si [rtid] (False, (0, 0), (0, 0, 0), False)
+   loopThreaded si action [rtid] (False, (0, 0), (0, 0, 0), False)
 
 fullCleanup :: [ThreadId] -> IO () -> IO ()
 fullCleanup tids cf = mapM_ killThread tids >> cf
 
-loopThreaded :: Int -> [ThreadId] -> Action -> IO ()
-loopThreaded si tids ac = do
-  i <- input ac
+loopThreaded :: Int -> IO () -> [ThreadId] -> Action -> IO ()
+loopThreaded si action tids ac = do
+  i <- input ac action
   case i of
     Nothing  -> fullCleanup tids shutdown
-    Just nac -> threadDelay si >> loopThreaded si tids (resetRotation nac)
+    Just nac -> threadDelay si >> loopThreaded si action tids (resetRotation nac)
 
