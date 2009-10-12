@@ -22,7 +22,7 @@ pollAllSDLEvents = go []
 input :: Action -> IO (Maybe Action)
 input ac = do
   events <- pollAllSDLEvents
-  when (not (null events)) (print events)
+  when (not (null events)) (print events >> (getCameraPosition >>= print))
   let nac@(_, ro, t, q) = foldl eventToAction ac events
   if q then return Nothing else doAction ro t >> return (Just nac)
 
@@ -65,6 +65,11 @@ doAction (ya, pit) (x_, y_, z_) = do
   rotateCamera (YPR ya 0 0)  World
   rotateCamera (YPR 0 pit 0) Local
   translateCamera (Vector3 x_ y_ z_)
+  (Vector3 camx camy camz) <- getCameraPosition
+  mres <- raySceneQuerySimple (Vector3 camx 5000 camz) negUnitY
+  case mres of
+    Nothing -> return ()
+    Just res -> when ((y res) + 10 > camy) $ setCameraPosition (Vector3 camx ((y res) + 10) camz)
 
 shutdown :: IO ()
 shutdown = do
