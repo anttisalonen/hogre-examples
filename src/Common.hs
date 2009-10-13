@@ -1,6 +1,7 @@
-module Common(runWithSDL)
+module Common(runWithSDL, EventCallback, FrameCallback(..))
 where
 
+import Data.Maybe (fromMaybe)
 import Control.Monad (when, forever)
 import System.IO
 import Control.Concurrent
@@ -8,6 +9,9 @@ import Control.Concurrent
 import qualified Graphics.UI.SDL as SDL
 
 import Graphics.Ogre.Ogre
+
+type EventCallback = [SDL.Event] -> IO ()
+data FrameCallback a = FrameCallback { getcallback :: (a -> IO a) }
 
 pollAllSDLEvents :: IO [SDL.Event]
 pollAllSDLEvents = go []
@@ -19,12 +23,12 @@ pollAllSDLEvents = go []
                        es <- pollAllSDLEvents
                        return (e:es)
 
-input :: Action -> IO () -> IO (Maybe Action)
+input :: Action -> EventCallback -> IO (Maybe Action)
 input ac action = do
   events <- pollAllSDLEvents
   when (not (null events)) (print events >> (getCameraPosition >>= print))
   let nac@(_, ro, t, q) = foldl eventToAction ac events
-  if q then return Nothing else doAction ro t action >> return (Just nac)
+  if q then return Nothing else action events >> doAction ro t >> return (Just nac)
 
 type Action = (Bool,        -- right mouse button pressed
     (Float, Float),         -- rotation (yaw, pitch)
@@ -60,33 +64,42 @@ eventToAction (bt, ro, t, q) _ = (bt, ro, t, q)
 resetRotation :: Action -> Action
 resetRotation (bt, _, t, q) = (bt, (0, 0), t, q)
 
-doAction :: (Float, Float) -> (Float, Float, Float) -> IO () -> IO ()
-doAction (ya, pit) (x_, y_, z_) act = do
+doAction :: (Float, Float) -> (Float, Float, Float) -> IO ()
+doAction (ya, pit) (x_, y_, z_) = do
   rotateCamera (YPR ya 0 0)  World
   rotateCamera (YPR 0 pit 0) Local
   translateCamera (Vector3 x_ y_ z_)
-  act
 
 shutdown :: IO ()
 shutdown = do
     putStrLn "Shutting down..."
     cleanupOgre
 
-runWithSDL :: IO () -> IO () -> IO ()
-runWithSDL initGame action = SDL.withInit [SDL.InitEverything] $ runThreadedNonblocking initGame action 20 20 >> return ()
+runWithSDL :: IO () -> Maybe EventCallback -> Maybe (a, FrameCallback a) -> IO ()
+runWithSDL initGame action action2 = SDL.withInit [SDL.InitEverything] $ runThreadedNonblocking initGame action action2 20 20 >> return ()
 
-runThreadedNonblocking :: IO () -> IO () -> Int -> Int -> IO ()
-runThreadedNonblocking initGame action renderinterval handleinterval = do
+runThreadedNonblocking :: IO () -> Maybe EventCallback -> Maybe (a, FrameCallback a) -> Int -> Int -> IO ()
+runThreadedNonblocking initGame action action2 renderinterval handleinterval = do
    initGame
    let ri = renderinterval * 1000
    let si = handleinterval * 1000
-   rtid <- forkIO (forever (renderOgre >> threadDelay ri))
-   loopThreaded si action [rtid] (False, (0, 0), (0, 0, 0), False)
+   rtid <- case action2 of
+     Nothing             -> forkIO (forever (renderOgre >> threadDelay ri))
+     Just (initval, act) -> forkIO (renderLoop initval act ri)
+   let act = fromMaybe (\_ -> return ()) action
+   loopThreaded si act [rtid] (False, (0, 0), (0, 0, 0), False)
+
+renderLoop :: a -> FrameCallback a -> Int -> IO ()
+renderLoop val action ri = do
+   renderOgre
+   nval <- (getcallback action) val
+   threadDelay ri
+   renderLoop nval action ri
 
 fullCleanup :: [ThreadId] -> IO () -> IO ()
 fullCleanup tids cf = mapM_ killThread tids >> cf
 
-loopThreaded :: Int -> IO () -> [ThreadId] -> Action -> IO ()
+loopThreaded :: Int -> EventCallback -> [ThreadId] -> Action -> IO ()
 loopThreaded si action tids ac = do
   i <- input ac action
   case i of

@@ -11,6 +11,9 @@ import qualified Graphics.UI.SDL as SDL
 import Graphics.Ogre.Ogre
 import Common
 
+swordTemplate :: String -> Vector3 -> Entity
+swordTemplate swname pos = Entity swname pos (StdMesh "sword.mesh" (YPR  halfPI  0.0 0.0)) True (Vector3 2.0 2.0 2.0)
+
 initGame :: IO ()
 initGame = do
     let set = OgreSettings "resources.cfg" False "Hogre Example 03" (Color 0.2 0.2 0.2) StencilModulative [ExteriorClose]
@@ -25,13 +28,42 @@ initGame = do
     setWorldGeometry "terrain.cfg"
 
 main :: IO ()
-main = runWithSDL initGame query
+main = runWithSDL initGame (Just cameraAboveGround) (Just (0, (FrameCallback putObject)))
 
-query :: IO ()
-query = do
+getLMB :: IO (Maybe (Int, Int))
+getLMB = do
+  (xpos, ypos, btns) <- SDL.getMouseState
+  return $ case SDL.ButtonLeft `elem` btns of
+    True  -> Just (xpos, ypos)
+    False -> Nothing
+
+cameraAboveGround :: [SDL.Event] -> IO ()
+cameraAboveGround _ = do
   (Vector3 camx camy camz) <- getCameraPosition
   mres <- raySceneQuerySimple (Vector3 camx 5000 camz) negUnitY
   case mres of
-    Nothing -> return ()
+    Nothing  -> return ()
     Just res -> when ((y res) + 10 > camy) $ setCameraPosition (Vector3 camx ((y res) + 10) camz)
+
+putObject :: Int -> IO Int
+putObject counter = do
+  mp <- getLMB
+  case mp of
+    Nothing           -> return counter
+    Just (xpos, ypos) -> do
+      scr <- SDL.getVideoSurface
+      let wid = SDL.surfaceGetWidth scr
+      let hei = SDL.surfaceGetHeight scr
+      print (xpos, ypos, wid, hei)
+      let wabs = (fromIntegral xpos) / (fromIntegral wid)
+      let habs = (fromIntegral ypos) / (fromIntegral hei)
+      pres <- raySceneQueryMouseSimple wabs habs
+      case pres of
+        Nothing                       -> return counter
+        Just (Vector3 resx resy resz) -> do
+          let swname = "Sword" ++ (show counter)
+          let pos = Vector3 resx (resy + 10) resz
+          addEntity (swordTemplate swname pos)
+          print swname
+          return (counter + 1)
 

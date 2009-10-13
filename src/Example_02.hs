@@ -37,5 +37,5 @@ initGame = do
     addEntity (Entity "obj1" (Vector3 5.0 20.0 10.0) (StdMesh "hornet.mesh" (YPR 0.0 0.0 0.0)) True (Vector3 0.6 0.6 0.6))
 
 main :: IO ()
-main = runWithSDL initGame (return ())
+main = runWithSDL initGame Nothing Nothing
 
