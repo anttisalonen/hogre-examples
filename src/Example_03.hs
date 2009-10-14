@@ -28,7 +28,7 @@ initGame = do
     setWorldGeometry "terrain.cfg"
 
 main :: IO ()
-main = runWithSDL initGame (Just cameraAboveGround) (Just (0, (FrameCallback putObject)))
+main = runWithSDL initGame (0, EventCallback query, FrameCallback (\v -> return v))
 
 getLMB :: IO (Maybe (Int, Int))
 getLMB = do
@@ -37,17 +37,28 @@ getLMB = do
     True  -> Just (xpos, ypos)
     False -> Nothing
 
-cameraAboveGround :: [SDL.Event] -> IO ()
-cameraAboveGround _ = do
+getLMBPressed :: [SDL.Event] -> Maybe (Int, Int)
+getLMBPressed []     = Nothing
+getLMBPressed (e:es) = case e of
+                         (SDL.MouseButtonDown xp yp SDL.ButtonLeft) -> Just ((fromIntegral xp), (fromIntegral yp))
+                         _                                          -> getLMBPressed es
+
+query :: Int -> [SDL.Event] -> IO Int
+query counter events = do
+  cameraAboveGround
+  putObject counter events
+
+cameraAboveGround :: IO ()
+cameraAboveGround = do
   (Vector3 camx camy camz) <- getCameraPosition
   mres <- raySceneQuerySimple (Vector3 camx 5000 camz) negUnitY
   case mres of
     Nothing  -> return ()
     Just res -> when ((y res) + 10 > camy) $ setCameraPosition (Vector3 camx ((y res) + 10) camz)
 
-putObject :: Int -> IO Int
-putObject counter = do
-  mp <- getLMB
+putObject :: Int -> [SDL.Event] -> IO Int
+putObject counter events = do
+  let mp = getLMBPressed events
   case mp of
     Nothing           -> return counter
     Just (xpos, ypos) -> do

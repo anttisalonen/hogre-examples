@@ -25,7 +25,8 @@ Executable example_02
   extra-libraries: CEGUIOgreRenderer, OgreMain, CEGUIBase
 
 Executable example_03
-  Build-Depends:   base, haskell98, hogre>=0.0.1, SDL>=0.4.0
+  Build-Depends:   base, haskell98, hogre>=0.0.1, SDL>=0.4.0,
+                   stm>=2.1.1.2
   Main-is:         Example_03.hs
   Hs-Source-Dirs:  src
   Ghc-options:     -Wall -O2

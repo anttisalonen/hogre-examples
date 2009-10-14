@@ -1,17 +1,17 @@
-module Common(runWithSDL, EventCallback, FrameCallback(..))
+module Common(runWithSDL, FrameCallback(..), EventCallback(..))
 where
 
-import Data.Maybe (fromMaybe)
-import Control.Monad (when, forever)
+import Control.Monad (when)
 import System.IO
 import Control.Concurrent
+import Control.Concurrent.STM
 
 import qualified Graphics.UI.SDL as SDL
 
 import Graphics.Ogre.Ogre
 
-type EventCallback = [SDL.Event] -> IO ()
-data FrameCallback a = FrameCallback { getcallback :: (a -> IO a) }
+data FrameCallback a = FrameCallback { framecallback :: (a -> IO a) }
+data EventCallback a = EventCallback { eventcallback :: (a -> [SDL.Event] -> IO a) }
 
 pollAllSDLEvents :: IO [SDL.Event]
 pollAllSDLEvents = go []
@@ -22,13 +22,6 @@ pollAllSDLEvents = go []
                      else do
                        es <- pollAllSDLEvents
                        return (e:es)
-
-input :: Action -> EventCallback -> IO (Maybe Action)
-input ac action = do
-  events <- pollAllSDLEvents
-  when (not (null events)) (print events >> (getCameraPosition >>= print))
-  let nac@(_, ro, t, q) = foldl eventToAction ac events
-  if q then return Nothing else action events >> doAction ro t >> return (Just nac)
 
 type Action = (Bool,        -- right mouse button pressed
     (Float, Float),         -- rotation (yaw, pitch)
@@ -75,34 +68,49 @@ shutdown = do
     putStrLn "Shutting down..."
     cleanupOgre
 
-runWithSDL :: IO () -> Maybe EventCallback -> Maybe (a, FrameCallback a) -> IO ()
-runWithSDL initGame action action2 = SDL.withInit [SDL.InitEverything] $ runThreadedNonblocking initGame action action2 20 20 >> return ()
+runWithSDL :: IO () -> (a, EventCallback a, FrameCallback a) -> IO ()
+runWithSDL initGame action = SDL.withInit [SDL.InitEverything] $ runThreadedNonblocking initGame action 20 20 >> return ()
 
-runThreadedNonblocking :: IO () -> Maybe EventCallback -> Maybe (a, FrameCallback a) -> Int -> Int -> IO ()
-runThreadedNonblocking initGame action action2 renderinterval handleinterval = do
+nullAction :: Action
+nullAction = (False, (0, 0), (0, 0, 0), False)
+
+runThreadedNonblocking :: IO () -> (a, EventCallback a, FrameCallback a) -> Int -> Int -> IO ()
+runThreadedNonblocking initGame (ival, ecb, fcb) renderinterval handleinterval = do
    initGame
    let ri = renderinterval * 1000
    let si = handleinterval * 1000
-   rtid <- case action2 of
-     Nothing             -> forkIO (forever (renderOgre >> threadDelay ri))
-     Just (initval, act) -> forkIO (renderLoop initval act ri)
-   let act = fromMaybe (\_ -> return ()) action
-   loopThreaded si act [rtid] (False, (0, 0), (0, 0, 0), False)
+   box <- atomically $ newTMVar ival
+   rtid <- forkIO (renderLoop box fcb ri)
+   inputLoop si box ecb [rtid] nullAction
 
-renderLoop :: a -> FrameCallback a -> Int -> IO ()
-renderLoop val action ri = do
+renderLoop :: TMVar a -> FrameCallback a -> Int -> IO ()
+renderLoop box action ri = do
    renderOgre
-   nval <- (getcallback action) val
+   val <- atomically $ takeTMVar box
+   nval <- (framecallback action) val
+   atomically $ putTMVar box nval
    threadDelay ri
-   renderLoop nval action ri
+   renderLoop box action ri
 
 fullCleanup :: [ThreadId] -> IO () -> IO ()
 fullCleanup tids cf = mapM_ killThread tids >> cf
 
-loopThreaded :: Int -> EventCallback -> [ThreadId] -> Action -> IO ()
-loopThreaded si action tids ac = do
-  i <- input ac action
+inputLoop :: Int -> TMVar a -> EventCallback a -> [ThreadId] -> Action -> IO ()
+inputLoop si box action tids ac = do
+  i <- input ac box action
   case i of
     Nothing  -> fullCleanup tids shutdown
-    Just nac -> threadDelay si >> loopThreaded si action tids (resetRotation nac)
+    Just nac -> threadDelay si >> inputLoop si box action tids (resetRotation nac)
+
+input :: Action -> TMVar a -> EventCallback a -> IO (Maybe Action)
+input ac box action = do
+  events <- pollAllSDLEvents
+  when (not (null events)) (print events >> (getCameraPosition >>= print))
+  let nac@(_, ro, t, q) = foldl eventToAction ac events
+  if q then return Nothing else do 
+               val <- atomically $ takeTMVar box
+               nval <- (eventcallback action) val events
+               atomically $ putTMVar box nval
+               doAction ro t
+               return (Just nac)
 
