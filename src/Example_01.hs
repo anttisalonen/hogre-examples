@@ -37,7 +37,7 @@ main = do
     let sce = OgreScene cam ents lig
     initOgre set
     addScene sce
-    addEntity (Entity "obj1" (ogreloc 0) (StdMesh "hornet.mesh" (YPR 0 halfPI 0)) True (Vector3 0.5 0.5 0.5))
+    addEntity (Entity "obj1" (ogreloc 0) (StdMesh "robot.mesh" (YPR 0 0 0)) True (Vector3 0.20 0.20 0.20))
     handle shutdown (renderLoop 0)
 
 shutdown :: (Show a) => a -> IO ()
