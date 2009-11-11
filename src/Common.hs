@@ -1,7 +1,6 @@
 module Common(runWithSDL, FrameCallback(..), EventCallback(..))
 where
 
-import Control.Monad (when)
 import System.IO
 import Control.Concurrent
 import Control.Concurrent.STM
@@ -105,7 +104,7 @@ inputLoop si box action tids ac = do
 input :: Action -> TMVar a -> EventCallback a -> IO (Maybe Action)
 input ac box action = do
   events <- pollAllSDLEvents
-  when (not (null events)) (print events >> (getCameraPosition >>= print))
+  -- when (not (null events)) (print events >> (getCameraPosition >>= print))
   let nac@(_, ro, t, q) = foldl eventToAction ac events
   if q then return Nothing else do 
                val <- atomically $ takeTMVar box

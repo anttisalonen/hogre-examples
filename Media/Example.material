@@ -78,6 +78,7 @@ material Examples/Robot
         {
                 pass
                 {
+/*
                         vertex_program_ref Ogre/HardwareSkinningOneWeight
                         {
                                 param_named_auto worldMatrix3x4Array world_matrix_array_3x4
@@ -97,7 +98,7 @@ material Examples/Robot
                                 param_named_auto ambient ambient_light_colour
 
                         }
-
+*/
                         texture_unit
                         {
                                 texture r2skin.jpg

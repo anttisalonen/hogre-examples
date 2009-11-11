@@ -11,12 +11,12 @@ import qualified Graphics.UI.SDL as SDL
 import Graphics.Ogre.Ogre
 import Common
 
-swordTemplate :: String -> Vector3 -> Entity
-swordTemplate swname pos = Entity swname pos (StdMesh "sword.mesh" (YPR  halfPI  0.0 0.0)) True (Vector3 2.0 2.0 2.0)
+robotTemplate :: String -> Vector3 -> Entity
+robotTemplate swname pos = Entity swname pos (StdMesh "robot.mesh" (YPR  halfPI  0.0 0.0)) True (Vector3 0.2 0.2 0.2)
 
 initGame :: IO ()
 initGame = do
-    let set = OgreSettings "resources.cfg" False "Hogre Example 03" (Color 0.2 0.2 0.2) StencilModulative [ExteriorClose]
+    let set = OgreSettings "resources.cfg" False "Hogre Example 03" (Color 0.9 0.9 0.9) StencilModulative [ExteriorClose]
     let cam = Camera (Vector3 242.0 120.0 580) 0 (Vector3 241 120 580)
     let (wid, hei) = (1024, 768)
     let sce = OgreScene cam [] []
@@ -72,9 +72,9 @@ putObject counter events = do
       case pres of
         Nothing                       -> return counter
         Just (Vector3 resx resy resz) -> do
-          let swname = "Sword" ++ (show counter)
+          let swname = "robot" ++ (show counter)
           let pos = Vector3 resx (resy + 10) resz
-          addEntity (swordTemplate swname pos)
+          addEntity (robotTemplate swname pos)
           print swname
           return (counter + 1)
 
