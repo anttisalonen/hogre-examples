@@ -7,6 +7,7 @@ Author:         Antti Salonen<ajsalonen at gmail dot com>
 Maintainer:     Antti Salonen<ajsalonen at gmail dot com>
 Copyright:      Antti Salonen 2009
 Stability:      Unstable
+Homepage:       http://github.com/anttisalonen/hogre-examples
 Category:       Graphics
 Synopsis:       Examples for using Hogre.
 Description:    Examples for using Hogre, Haskell bindings to OGRE
@@ -40,7 +41,7 @@ extra-source-files: src/Common.hs,
 
 source-repository head
   type:      git
-  location:  http://github.com/anttisalonen/hogre-examples
+  location:  git://github.com/anttisalonen/hogre-examples.git
 
 Executable example_01
   Build-Depends:   base >= 3 && < 5, haskell98, hogre>=0.0.1
