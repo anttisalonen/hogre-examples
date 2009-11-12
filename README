@@ -1,8 +1,25 @@
 Examples for using Hogre, Haskell bindings to OGRE
 (Object-Oriented Graphics Rendering Engine)
-(<http://www.ogre3d.org/>).
+(http://www.ogre3d.org/).
+
+You need to run all the examples in the directory where the directory Media
+is located, otherwise the content will not be found.
+
+If the OGRE plugins are installed in some other directory than /usr/lib/OGRE, 
+you need to define the directory in plugins.cfg.
+
 example_01 creates a simple scene with a moving entity.
-example_02 demonstrates use of SDL for input and window
-creation.
-example_03 demonstrates ray scene queries and loading
-a world configuration from a file.
+It roughly corresponds to OGRE basic tutorial #2 but without input.
+If nothing is rendered, try deleting the ogre.cfg file.
+
+example_02 demonstrates use of SDL for input and window creation.
+Use arrow keys and page up/down to move, mouse with right mouse button down
+to look around and 'q' or escape to exit.
+
+example_03 demonstrates ray scene queries and loading a world configuration 
+from a file.
+It roughly corresponds to OGRE intermediate tutorial #2.
+Use arrow keys and page up/down to move, mouse with right mouse button down
+to look around and 'q' or escape to exit. With the left mouse button you can
+create some robots on the landscape.
+
