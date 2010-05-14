@@ -40,7 +40,7 @@ main = do
     addEntity (Entity "obj1" (ogreloc 0) (StdMesh "robot.mesh" (YPR 0 0 0)) True (Vector3 0.20 0.20 0.20))
     handle shutdown (renderLoop 0)
 
-shutdown :: (Show a) => a -> IO ()
+shutdown :: IOException -> IO ()
 shutdown e = do
     print e
     putStrLn "Shutting down..."
