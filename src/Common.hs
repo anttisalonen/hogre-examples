@@ -1,7 +1,6 @@
 module Common(runWithSDL, FrameCallback(..), EventCallback(..))
 where
 
-import System.IO
 import Control.Concurrent
 import Control.Concurrent.STM
 

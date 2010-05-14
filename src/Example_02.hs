@@ -2,8 +2,6 @@
 module Main
 where
 
-import System.IO
-
 import qualified Graphics.UI.SDL as SDL
 
 import Graphics.Ogre.Ogre

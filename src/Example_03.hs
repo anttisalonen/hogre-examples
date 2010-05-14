@@ -2,8 +2,6 @@
 module Main
 where
 
-import Data.Maybe
-import System.IO
 import Control.Monad (when)
 
 import qualified Graphics.UI.SDL as SDL
