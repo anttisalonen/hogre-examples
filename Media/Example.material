@@ -120,3 +120,45 @@ material Examples/Robot
         }
 }
 
+material WoodPallet
+{
+        receive_shadows on
+        technique
+        {
+                pass
+                {
+                        ambient 0.5 0.5 0.5 1.0
+                        diffuse 1.0 1.0 1.0 1.0
+                        specular 0.0 0.0 0.0 1.0 12.5
+
+                        texture_unit
+                        {
+                                texture WoodPallet.png
+                                filtering trilinear
+                        }
+                }
+        }
+}
+
+material Lava
+{
+        receive_shadows on
+        technique
+        {
+                pass
+                {
+                        // ambient 0.300000 0.300000 0.000000 1.000000
+                        // diffuse 0.786168 0.795673 0.786204 1.000000
+                        // specular 0.630000 0.630000 0.630000 1.000000 12.500000
+                        // emissive 0.000000 0.000000 0.000000 1.000000
+                        texture_unit
+                        {
+                                texture lava.tga
+                                // tex_address_mode wrap
+                                // filtering trilinear
+                                // colour_op alpha_blend
+                        }
+                }
+        }
+}
+
