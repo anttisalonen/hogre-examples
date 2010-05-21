@@ -19,25 +19,22 @@ Description:    Examples for using Hogre, Haskell bindings to OGRE
                 example_03 demonstrates ray scene queries and loading
                 a world configuration from a file.
 Build-type:     Simple
-extra-source-files: src/Common.hs,
-                resources.cfg, plugins.cfg, README,
-                Media/blackhawk.material,
+
+data-files:     resources.cfg, plugins.cfg,
                 Media/clouds.jpg,
                 Media/Example.material,
-                Media/HornetUV_Cylinder.tga,
-                Media/IMG_0436.JPG,
-                Media/lagoon.tga,
                 Media/lava.tga,
-                Media/mix.tga,
-                Media/TailWings.JPG,
                 Media/terrain.cfg,
                 Media/terrain_detail.jpg,
                 Media/terrain.png,
                 Media/terrain_texture.jpg,
-                Media/WingFlapBump.jpg,
-                Media/WingFlap.jpg,
-                Media/WingsBump.jpg,
-                Media/Wings.jpg
+                Media/r2skin.jpg,
+                Media/robot.mesh,
+                Media/robot.skeleton,
+                Media/WoodPallet.png,
+                README
+
+extra-source-files: src/Common.hs
 
 source-repository head
   type:      git
