@@ -5,6 +5,8 @@ import Graphics.Ogre.Ogre
 import Control.Exception
 import Control.Concurrent (threadDelay)
 
+import Paths_hogre_examples
+
 renderLoop :: Float -> IO ()
 renderLoop f = do
     renderOgre
@@ -21,7 +23,8 @@ plloc f = Vector3 (30 + 40 * sin (4.0 * f)) 20 (50 + 40 * cos (4.0 * f))
 
 main :: IO ()
 main = do
-    let set = OgreSettings "resources.cfg" True "Hogre Example 01" (Color 0.2 0.2 0.2) StencilAdditive [Generic]
+    resfile <- getDataFileName "resources.cfg"
+    let set = OgreSettings resfile True "Hogre Example 01" (Color 0.2 0.2 0.2) StencilAdditive [Generic]
     let cam = Camera (Vector3 30.0 8.0 50.0) 0 (Vector3 135.0 40.0 50.0)
     let yelcol = Color 1.0 1.0 0.0
     let dircol = Color 0.25 0.25 0
