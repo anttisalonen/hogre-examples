@@ -36,3 +36,10 @@ Executable example_01
   Ghc-options:     -Wall
   extra-libraries: OgreMain
 
+Executable example_02
+  Build-Depends:   base >= 3 && < 5, haskell98, hogre>=0.1.0
+  Main-is:         Example_02.hs
+  Hs-Source-Dirs:  src
+  Ghc-options:     -Wall
+  extra-libraries: OgreMain
+

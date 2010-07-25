@@ -1,114 +1,85 @@
-module Common(runWithSDL, FrameCallback(..), EventCallback(..))
+module Common
 where
 
-import Control.Concurrent
-import Control.Concurrent.STM
+import System.Exit
+import Control.Monad
 
-import qualified Graphics.UI.SDL as SDL
+import Graphics.Ogre.HOgre
+import Graphics.Ogre.Types
 
-import Graphics.Ogre.Ogre
+-- based on basic tutorial 6 from Ogre Wiki.
+-- http://www.ogre3d.org/tikiwiki/Basic+Tutorial+6&structure=Tutorials
+generalSetup :: (Root -> IO a) -> IO a
+generalSetup fun =
+  -- construct Ogre::Root
+  root_with "plugins.cfg" "ogre.cfg" "Ogre.log" $ \root -> do
 
-data FrameCallback a = FrameCallback { framecallback :: (a -> IO a) }
-data EventCallback a = EventCallback { eventcallback :: (a -> [SDL.Event] -> IO a) }
+    -- setup resources
+    root_addResourceLocation root "Media" "FileSystem" "Group" True
 
-pollAllSDLEvents :: IO [SDL.Event]
-pollAllSDLEvents = go []
-    where go l = do
-                   e <- SDL.pollEvent
-                   if e == SDL.NoEvent 
-                     then return l 
-                     else do
-                       es <- pollAllSDLEvents
-                       return (e:es)
+    -- configure
+    -- show the configuration dialog and initialise the system
+    restored <- root_restoreConfig root
+    when (not restored) $ do
+      configured <- root_showConfigDialog root
+      when (not configured) $ exitWith (ExitFailure 1)
+    window <- root_initialise root True "Render Window" ""
 
-type Action = (Bool,        -- right mouse button pressed
-    (Float, Float),         -- rotation (yaw, pitch)
-    (Float, Float, Float),  -- translation (x, y, z)
-    Bool)                   -- quit flag
+    -- set default mipmap level (some APIs ignore this)
+    root_getTextureManager root >>= \tmgr -> textureManager_setDefaultNumMipmaps tmgr 5
 
-eventToAction :: Action -> SDL.Event -> Action
-eventToAction (bt, ro, t, _) SDL.Quit = (bt, ro, t, True)
-eventToAction (bt, ro, t, _) (SDL.KeyDown (SDL.Keysym SDL.SDLK_ESCAPE _ _)) = (bt, ro, t, True)
-eventToAction (bt, ro, t, _) (SDL.KeyDown (SDL.Keysym SDL.SDLK_q      _ _)) = (bt, ro, t, True)
-eventToAction (bt, ro, t@(x_, y_, z_), q) (SDL.KeyDown (SDL.Keysym k _ _)) = case k of
-  SDL.SDLK_UP       -> (bt, ro, (x_, y_, z_ - 1.0), q)
-  SDL.SDLK_DOWN     -> (bt, ro, (x_, y_, z_ + 1.0), q)
-  SDL.SDLK_RIGHT    -> (bt, ro, (x_ + 1.0, y_, z_), q)
-  SDL.SDLK_LEFT     -> (bt, ro, (x_ - 1.0, y_, z_), q)
-  SDL.SDLK_PAGEDOWN -> (bt, ro, (x_, y_ - 1.0, z_), q)
-  SDL.SDLK_PAGEUP   -> (bt, ro, (x_, y_ + 1.0, z_), q)
-  _ -> (bt, ro, t, q)
-eventToAction (bt, ro, t@(x_, y_, z_), q) (SDL.KeyUp   (SDL.Keysym k _ _)) = case k of
-  SDL.SDLK_UP        -> (bt, ro, (x_, y_, z_ + 1.0), q)
-  SDL.SDLK_DOWN      -> (bt, ro, (x_, y_, z_ - 1.0), q)
-  SDL.SDLK_RIGHT     -> (bt, ro, (x_ - 1.0, y_, z_), q)
-  SDL.SDLK_LEFT      -> (bt, ro, (x_ + 1.0, y_, z_), q)
-  SDL.SDLK_PAGEDOWN  -> (bt, ro, (x_, y_ + 1.0, z_), q)
-  SDL.SDLK_PAGEUP    -> (bt, ro, (x_, y_ - 1.0, z_), q)
-  _ -> (bt, ro, t, q)
-eventToAction (False, ro, t, q)        (SDL.MouseMotion _ _ _ _) = (False, ro, t, q)
-eventToAction (True, (ya, pit), t, q) (SDL.MouseMotion _ _ abs_x abs_y) = (True, (ya - (0.005 * fromIntegral abs_x), pit - (0.005 * fromIntegral abs_y)), t, q)
-eventToAction (_,  ro, t, q) (SDL.MouseButtonUp   _ _ SDL.ButtonRight) = (False, ro, t, q)
-eventToAction (_,  ro, t, q) (SDL.MouseButtonDown _ _ SDL.ButtonRight) = (True, ro, t, q)
-eventToAction (bt, ro, t, q) _ = (bt, ro, t, q)
+    -- initialise all resource groups
+    resourceGroupManager_getSingletonPtr >>= resourceGroupManager_initialiseAllResourceGroups
 
-resetRotation :: Action -> Action
-resetRotation (bt, _, t, q) = (bt, (0, 0), t, q)
+    -- create the scene manager, here a generic one
+    smgr <- root_createSceneManager1 root "DefaultSceneManager" "Scene Manager"
 
-doAction :: (Float, Float) -> (Float, Float, Float) -> IO ()
-doAction (ya, pit) (x_, y_, z_) = do
-  rotateCamera (YPR ya 0 0)  World
-  rotateCamera (YPR 0 pit 0) Local
-  translateCamera (Vector3 x_ y_ z_)
+    -- create and position the camera
+    cam <- sceneManager_createCamera smgr "PlayerCam"
+    frustum_setNearClipDistance (toFrustum cam) 5
 
-shutdown :: IO ()
-shutdown = do
-    putStrLn "Shutting down..."
-    cleanupOgre
+    -- create one viewport, entire window
+    vp <- renderTarget_addViewport (toRenderTarget window) cam 0 0 0 1 1
+    colourValue_with 0 0 0 1 $ viewport_setBackgroundColour vp
 
-runWithSDL :: IO () -> (a, EventCallback a, FrameCallback a) -> IO ()
-runWithSDL initGame action = SDL.withInit [SDL.InitEverything] $ runThreadedNonblocking initGame action 20 20 >> return ()
+    -- Alter the camera aspect ratio to match the viewport
+    vpw <- viewport_getActualWidth vp
+    vph <- viewport_getActualHeight vp
+    frustum_setAspectRatio (toFrustum cam) (fromIntegral vpw / fromIntegral vph)
 
-nullAction :: Action
-nullAction = (False, (0, 0), (0, 0, 0), False)
+    fun root
 
-runThreadedNonblocking :: IO () -> (a, EventCallback a, FrameCallback a) -> Int -> Int -> IO ()
-runThreadedNonblocking initGame (ival, ecb, fcb) renderinterval handleinterval = do
-   initGame
-   let ri = renderinterval * 1000
-   let si = handleinterval * 1000
-   box <- atomically $ newTMVar ival
-   rtid <- forkIO (renderLoop box fcb ri)
-   inputLoop si box ecb [rtid] nullAction
+render :: RenderWindow -> Root -> a -> (Root -> Float -> a -> IO (a, Bool)) -> IO a
+render window root value fun = do
+    timer <- root_getTimer root
+    time <- timer_getMicroseconds timer
+    render' time window root value fun
 
-renderLoop :: TMVar a -> FrameCallback a -> Int -> IO ()
-renderLoop box action ri = do
-   renderOgre
-   val <- atomically $ takeTMVar box
-   nval <- (framecallback action) val
-   atomically $ putTMVar box nval
-   threadDelay ri
-   renderLoop box action ri
+render' :: Int -> RenderWindow -> Root -> a -> (Root -> Float -> a -> IO (a, Bool)) -> IO a
+render' time window root value fun = 
+  do windowEventUtilities_messagePump
+     closed <- renderWindow_isClosed window
+     if closed
+       then return value
+       else do
+         success <- root_renderOneFrame1 root
+         timer <- root_getTimer root
+         time' <- timer_getMicroseconds timer
+         let delta = (fromIntegral (time' - time)) / 1000000
+         (value', cont) <- fun root delta value
+         if success && cont
+           then render' time' window root value' fun
+           else return value'
 
-fullCleanup :: [ThreadId] -> IO () -> IO ()
-fullCleanup tids cf = mapM_ killThread tids >> cf
+nullHandler :: Root -> Float -> () -> IO ((), Bool)
+nullHandler _ _ _ = return ((), True)
 
-inputLoop :: Int -> TMVar a -> EventCallback a -> [ThreadId] -> Action -> IO ()
-inputLoop si box action tids ac = do
-  i <- input ac box action
-  case i of
-    Nothing  -> fullCleanup tids shutdown
-    Just nac -> threadDelay si >> inputLoop si box action tids (resetRotation nac)
-
-input :: Action -> TMVar a -> EventCallback a -> IO (Maybe Action)
-input ac box action = do
-  events <- pollAllSDLEvents
-  -- when (not (null events)) (print events >> (getCameraPosition >>= print))
-  let nac@(_, ro, t, q) = foldl eventToAction ac events
-  if q then return Nothing else do 
-               val <- atomically $ takeTMVar box
-               nval <- (eventcallback action) val events
-               atomically $ putTMVar box nval
-               doAction ro t
-               return (Just nac)
+addEntity :: SceneManager -> String -> IO (Entity, SceneNode)
+addEntity smgr mesh = do
+  ent <- sceneManager_createEntity2 smgr mesh
+  rootNode <- sceneManager_getRootSceneNode smgr
+  node <- sceneManager_createSceneNode1 smgr
+  node_addChild (toNode rootNode) (toNode node)
+  sceneNode_attachObject node (toMovableObject ent)
+  return (ent, node)
 
