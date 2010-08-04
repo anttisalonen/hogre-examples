@@ -6,18 +6,17 @@ Examples for using Hogre, Haskell bindings to OGRE
 
 Usage:
 
-1. Install non-Haskell dependencies (OGRE: http://www.ogre3d.org/,
-SDL: http://www.libsdl.org/).
+1. Install non-Haskell dependencies (OGRE: http://www.ogre3d.org/).
 2. Install Haskell dependencies (hogre (see 
 http://github.com/anttisalonen/hogre)) either using
 cabal or by downloading and installing the packages manually.
+   Note: you need cgen, a Haskell binding generator, for hogre. cgen can be
+   found at git://github.com/anttisalonen/cgen.git or at Hackage.
 3. Unpack hogre-examples
 4. cabal configure [--user] && cabal build
-5. Define the directory where the OGRE plugins are installed in plugins.cfg.
-The default is /usr/lib/OGRE.
-6. dist/build/example_01/example_01
-
-You need to run all the examples in the directory where the directory Media
-is located (root directory of the package), otherwise the content will not 
-be found.
+5. Define the directory where the OGRE plugins are installed by modifying
+   plugins.cfg. The default is /usr/lib/OGRE.
+6. Run an example: dist/build/example_01/example_01
+   The examples must be run in the root directory of the package in order
+   to find the media files.
 
