@@ -15,11 +15,20 @@ Description:    Examples for using Hogre, Haskell bindings to OGRE
                 (<http://www.ogre3d.org/>).
 Build-type:     Simple
 
-data-files:     GreenSkin.jpg
-                ogrehead.mesh
-                Ogre.material
-                spheremap.png
-                tusk.jpg
+data-files:     Media/Example_Basic.cg
+                Media/Examples.material
+                Media/Grass.cg
+                Media/GreenSkin.jpg
+                Media/hdr.cg
+                Media/knot.mesh
+                Media/MtlPlat2.jpg
+                Media/ogrehead.mesh
+                Media/Ogre.material
+                Media/r2skin.jpg
+                Media/robot.mesh
+                Media/robot.skeleton
+                Media/spheremap.png
+                Media/tusk.jpg
                 plugins.cfg
                 README
 
