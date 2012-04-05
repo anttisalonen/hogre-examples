@@ -70,7 +70,6 @@ handler _ delta (ent, node, (locx, locz), wl) = do
   node_setPosition (toNode node) locx' 0 locz'
   anim <- entity_getAnimationState ent "Walk"
   animationState_addTime anim delta
-  print (dist, tgtx, tgtz)
   return ((ent, node, (locx', locz'), wl'), True)
 
 addKnot :: SceneManager -> Float -> Float -> Float -> IO ()
