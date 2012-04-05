@@ -32,7 +32,7 @@ generalSetup fun =
     resourceGroupManager_getSingletonPtr >>= resourceGroupManager_initialiseAllResourceGroups
 
     -- create the scene manager, here a generic one
-    smgr <- root_createSceneManager1 root "DefaultSceneManager" "Scene Manager"
+    smgr <- root_createSceneManager_RootPcharPcharP root "DefaultSceneManager" "Scene Manager"
 
     -- create and position the camera
     cam <- sceneManager_createCamera smgr "PlayerCam"
@@ -62,7 +62,7 @@ render' time window root value fun =
      if closed
        then return value
        else do
-         success <- root_renderOneFrame1 root
+         success <- root_renderOneFrame_RootP root
          timer <- root_getTimer root
          time' <- timer_getMicroseconds timer
          let delta = (fromIntegral (time' - time)) / 1000000
@@ -76,9 +76,9 @@ nullHandler _ _ _ = return ((), True)
 
 addEntity :: SceneManager -> String -> IO (Entity, SceneNode)
 addEntity smgr mesh = do
-  ent <- sceneManager_createEntity2 smgr mesh
+  ent <- sceneManager_createEntity_SceneManagerPcharP smgr mesh
   rootNode <- sceneManager_getRootSceneNode smgr
-  node <- sceneManager_createSceneNode1 smgr
+  node <- sceneManager_createSceneNode_SceneManagerP smgr
   node_addChild (toNode rootNode) (toNode node)
   sceneNode_attachObject node (toMovableObject ent)
   return (ent, node)
