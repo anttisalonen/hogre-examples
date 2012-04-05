@@ -1,3 +1,10 @@
+0.1.4 - 2010-05-15
+- fix compilation with ghc >= 7.2
+- update code to work with cgen 0.0.4 name mangling
+
+0.1.0 - 2010-08-05
+- adapt to hogre-0.1.0
+
 0.0.3 - 2010-05-15
 - Fix compiler error on GHC 6.12.1
 - Small corrections to documentation

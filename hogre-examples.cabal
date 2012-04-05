@@ -1,5 +1,5 @@
 Name:           hogre-examples
-Version:        0.1.0
+Version:        0.1.4
 Cabal-Version:  >= 1.6
 License:        MIT
 License-File:   LICENSE
@@ -39,14 +39,14 @@ source-repository head
   location:  git://github.com/anttisalonen/hogre-examples.git
 
 Executable example_01
-  Build-Depends:   base >= 3 && < 5, hogre>=0.1.0
+  Build-Depends:   base >= 3 && < 5, hogre>=0.1.4
   Main-is:         Example_01.hs
   Hs-Source-Dirs:  src
   Ghc-options:     -Wall
   extra-libraries: OgreMain stdc++
 
 Executable example_02
-  Build-Depends:   base >= 3 && < 5, hogre>=0.1.0
+  Build-Depends:   base >= 3 && < 5, hogre>=0.1.4
   Main-is:         Example_02.hs
   Hs-Source-Dirs:  src
   Ghc-options:     -Wall
